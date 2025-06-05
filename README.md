@@ -15,3 +15,4 @@ uvicorn backend.main:app --reload
 ```
 
 Both servers use default ports (5173 and 8000).
+See docs/MULTIMODAL_GEMINI.md for instructions on building a multimodal chatbot with voice and gesture support using Gemini.
