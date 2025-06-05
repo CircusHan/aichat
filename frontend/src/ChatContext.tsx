@@ -11,6 +11,8 @@ interface ChatState {
   messages: Message[]
   model: string
   setModel: (m: string) => void
+  apiKey: string
+  setApiKey: (k: string) => void
   sendMessage: (content: string) => Promise<void>
   clear: () => void
 }
@@ -20,6 +22,9 @@ const STORAGE_PREFIX = 'chat-history-'
 
 export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [model, setModel] = useState('o3 mini')
+  const [apiKey, setApiKey] = useState(
+    typeof window === 'undefined' ? '' : localStorage.getItem('openai-key') || ''
+  )
   // Load history from localStorage
   const { data: messages = [], mutate } = useSWR<Message[]>(model, () => {
     if (typeof window === 'undefined') return []
@@ -32,13 +37,20 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem(STORAGE_PREFIX + model, JSON.stringify(messages))
   }, [messages, model])
 
+  useEffect(() => {
+    localStorage.setItem('openai-key', apiKey)
+  }, [apiKey])
+
   // Send user message then stream assistant reply
   const sendMessage = async (content: string) => {
     const newList = [...messages, { role: 'user' as const, content }]
     mutate(newList, false)
     const res = await fetch('http://localhost:8000/chat', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'openai-api-key': apiKey
+      },
       body: JSON.stringify({ messages: newList, model })
     })
     const reader = res.body?.getReader()
@@ -61,7 +73,7 @@ export const ChatProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <ChatContext.Provider value={{ messages, model, setModel, sendMessage, clear }}>
+    <ChatContext.Provider value={{ messages, model, setModel, apiKey, setApiKey, sendMessage, clear }}>
       {children}
     </ChatContext.Provider>
   )
